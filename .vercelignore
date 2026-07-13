@@ -1,0 +1,46 @@
+# Build cache
+.git
+node_modules
+.next
+out
+build
+dist
+
+# Logs
+*.log
+dev.log
+server.log
+
+# Environment (will be set on host)
+.env
+.env.local
+.env.production
+
+# Database (will be created on host)
+*.db
+*.db-journal
+db/
+
+# IDE
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Z-AI internal
+.zscripts
+agent-ctx
+download/README.md
+
+# Cache
+.cache
+.eslintcache
+.turbo
+
+# OS
+Thumbs.db

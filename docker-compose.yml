@@ -1,0 +1,96 @@
+# ============== DOCKER COMPOSE FOR PRODUCTION ==============
+# TYS University ERP - Full Stack Deployment
+# Usage: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # ============== Next.js Application ==============
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tys-erp-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://tys_user:tys_password@db:5432/tys_university
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-change-this-secret-key-32-chars}
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    volumes:
+      - app_data:/app/data
+      - app_uploads:/app/public/uploads
+    networks:
+      - tys-network
+
+  # ============== PostgreSQL Database ==============
+  db:
+    image: postgres:16-alpine
+    container_name: tys-erp-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=tys_user
+      - POSTGRES_PASSWORD=tys_password
+      - POSTGRES_DB=tys_university
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tys_user -d tys_university"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - tys-network
+
+  # ============== Redis Cache & Queue ==============
+  redis:
+    image: redis:7-alpine
+    container_name: tys-erp-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    networks:
+      - tys-network
+
+  # ============== Nginx Reverse Proxy ==============
+  nginx:
+    image: nginx:alpine
+    container_name: tys-erp-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - nginx_certs:/etc/nginx/certs
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - app
+    networks:
+      - tys-network
+
+volumes:
+  postgres_data:
+  redis_data:
+  app_data:
+  app_uploads:
+  nginx_certs:
+  nginx_logs:
+
+networks:
+  tys-network:
+    driver: bridge
